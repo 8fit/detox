@@ -10,7 +10,7 @@ class APKPath {
     const splitFileName = originalApkPathObj.name.split('-');
 
     const buildType = _.last(splitFileName);
-    const flavorDimensions = _.slice(splitFileName, 1, splitFileName.length - 1);
+    const flavorDimensions = _.slice(splitFileName, 2, splitFileName.length - 1);
 
     tempPath = _.dropRight(tempPath, 1); //buildType
 
