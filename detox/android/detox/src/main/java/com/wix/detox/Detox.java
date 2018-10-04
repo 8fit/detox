@@ -69,7 +69,7 @@ import android.support.test.uiautomator.UiSelector;
  * <p>If not set, then Detox tests are no ops. So it's safe to mix it with other tests.</p>
  */
 public final class Detox {
-    static ActivityTestRule sActivityTestRule;
+    static DetoxActivityTestRule sActivityTestRule;
 
     private Detox() {}
 
@@ -80,11 +80,11 @@ public final class Detox {
      *
      * <p>
      * In case you have a non-standard React Native application, consider using
-     * {@link Detox#runTests(ActivityTestRule, Object)}}.
+     * {@link Detox#runTests(DetoxActivityTestRule, Object)}}.
      * </p>
      * @param activityTestRule the activityTestRule
      */
-    public static void runTests(ActivityTestRule activityTestRule) {
+    public static void runTests(DetoxActivityTestRule activityTestRule) {
         Context appContext = InstrumentationRegistry.getTargetContext().getApplicationContext();
         runTests(activityTestRule, appContext);
     }
@@ -95,7 +95,7 @@ public final class Detox {
      * doesn't implement ReactApplication.
      * </p>
      *
-     * Call {@link Detox#runTests(ActivityTestRule)} )} in every other case.
+     * Call {@link Detox#runTests(DetoxActivityTestRule)} )} in every other case.
      *
      * <p>
      * The only requirement is that the passed in object must have
@@ -106,7 +106,7 @@ public final class Detox {
      * @param activityTestRule the activityTestRule
      * @param Context an object that has a {@code getReactNativeHost()} method
      */
-    public static void runTests(ActivityTestRule activityTestRule, @NonNull final Context context) {
+    public static void runTests(DetoxActivityTestRule activityTestRule, @NonNull final Context context) {
         sActivityTestRule = activityTestRule;
         Intent intent = null;
         Bundle arguments = InstrumentationRegistry.getArguments();
@@ -115,7 +115,7 @@ public final class Detox {
             intent = intentWithUrl(detoxURLOverride);
         }
 
-        activityTestRule.launchActivity(intent);
+        sActivityTestRule.launchActivity(intent);
 
 
         // Kicks off another thread and attaches a Looper to that.
@@ -149,8 +149,12 @@ public final class Detox {
         sActivityTestRule.launchActivity(intent);
     }
 
+    public static void launchActivityWithURL(Intent intent) {
+        sActivityTestRule.launchActivityWithURL(intent);
+    }
+
     public static void startActivityFromUrl(String url) {
-        launchActivity(intentWithUrl(url));
+        launchActivityWithURL(intentWithUrl(url));
     }
 
     public static Intent intentWithUrl(String url) {
