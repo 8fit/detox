@@ -46,27 +46,83 @@ describe('ADB', () => {
   });
 
   it(`pidof (success)`, async () => {
-    adb.shell = async () => `u0_a19        2199  1701 3554600  70264 0                   0 s com.google.android.ext.services `;
+    jest.spyOn(adb, 'shell').mockImplementation(async () =>
+      `u0_a19        2199  1701 3554600  70264 0                   0 s com.google.android.ext.services `);
+
     expect(await adb.pidof('', 'com.google.android.ext.services')).toBe(2199);
   });
 
   it(`pidof (failure)`, async () => {
-    adb.shell = async () => ``;
+    jest.spyOn(adb, 'shell').mockImplementation(async () => '');
     expect(await adb.pidof('', 'com.google.android.ext.services')).toBe(NaN);
   });
 
-  it(`unlockScreen`, async () => {
-    await adb.unlockScreen('deviceId');
-    expect(exec).toHaveBeenCalledTimes(1);
+  describe('unlockScreen', () => {
+    const deviceId = 'mockEmulator';
+
+    async function unlockScreenWithPowerStatus(mWakefulness, mUserActivityTimeoutOverrideFromWindowManager) {
+      jest.spyOn(adb, 'shell').mockImplementation(async () => `
+        mWakefulness=${mWakefulness}
+        mWakefulnessChanging=false
+        mWakeLockSummary=0x0
+        mUserActivitySummary=0x1
+        mWakeUpWhenPluggedOrUnpluggedConfig=false
+        mWakeUpWhenPluggedOrUnpluggedInTheaterModeConfig=false
+        mUserActivityTimeoutOverrideFromWindowManager=${mUserActivityTimeoutOverrideFromWindowManager}
+        mUserInactiveOverrideFromWindowManager=false
+      `);
+
+      await adb.unlockScreen(deviceId);
+    }
+
+    describe('when unlocking an awake and unlocked device', function() {
+      beforeEach(async () => unlockScreenWithPowerStatus('Awake', '-1'));
+
+      it('should not press power button', () =>
+        expect(adb.shell).not.toHaveBeenCalledWith(deviceId, 'input keyevent KEYCODE_POWER'));
+
+      it('should not press menu button', () =>
+        expect(adb.shell).not.toHaveBeenCalledWith(deviceId, 'input keyevent KEYCODE_MENU'));
+    });
+
+    describe('when unlocking a sleeping and locked device', function() {
+      beforeEach(async () => unlockScreenWithPowerStatus('Asleep', '10000'));
+
+      it('should press power button first', () =>
+        expect(adb.shell.mock.calls[1]).toEqual([deviceId, 'input keyevent KEYCODE_POWER']));
+
+      it('should press menu afterwards', () =>
+        expect(adb.shell.mock.calls[2]).toEqual([deviceId, 'input keyevent KEYCODE_MENU']));
+    });
+
+    describe('when unlocking an awake but locked device', function() {
+      beforeEach(async () => unlockScreenWithPowerStatus('Awake', '10000'));
+
+      it('should not press power button', () =>
+        expect(adb.shell).not.toHaveBeenCalledWith(deviceId, 'input keyevent KEYCODE_POWER'));
+
+      it('should press menu button', () =>
+        expect(adb.shell).toHaveBeenCalledWith(deviceId, 'input keyevent KEYCODE_MENU'));
+    });
+
+    describe('when unlocking a sleeping but unlocked device', function() {
+      beforeEach(async () => unlockScreenWithPowerStatus('Asleep', '-1'));
+
+      it('should press power button', () =>
+        expect(adb.shell).toHaveBeenCalledWith(deviceId, 'input keyevent KEYCODE_POWER'));
+
+      it('should not press menu button', () =>
+        expect(adb.shell).not.toHaveBeenCalledWith(deviceId, 'input keyevent KEYCODE_MENU'));
+    });
   });
 
   it(`listInstrumentation passes the right deviceId`, async () => {
     const deviceId = 'aDeviceId';
-    const spyShell = jest.spyOn(adb, 'shell');
+    jest.spyOn(adb, 'shell');
 
     await adb.listInstrumentation(deviceId);
 
-    expect(spyShell).toBeCalledWith(deviceId, expect.any(String));
+    expect(adb.shell).toBeCalledWith(deviceId, 'pm list instrumentation');
   });
 
   it(`Parse 'adb device' output`, async () => {
@@ -90,18 +146,7 @@ describe('ADB', () => {
     expect(actual).toEqual(parsedDevices);
   });
 
-  it(`getInstrumentationRunner passes the right deviceId`, async () => {
-    const deviceId = 'aDeviceId';
-    const spyRunnerForBundle = jest.spyOn(adb, 'instrumentationRunnerForBundleId');
-    spyRunnerForBundle.mockReturnValue('');
-    const spyShell = jest.spyOn(adb, 'shell');
-
-    await adb.getInstrumentationRunner(deviceId, 'com.whatever.package');
-
-    expect(spyShell).toBeCalledWith(deviceId, expect.any(String));
-  });
-
-  it(`instrumentationRunnerForBundleId parses the correct runner for the package`, async () => {
+  it(`getInstrumentationRunner parses the correct runner for the package`, async () => {
     const expectedRunner = "com.example.android.apis/.app.LocalSampleInstrumentation";
     const expectedPackage = "com.example.android.apis";
     const instrumentationRunnersShellOutput =
@@ -110,8 +155,11 @@ describe('ADB', () => {
       `instrumentation:${expectedRunner} (target=${expectedPackage})\n` +
       "instrumentation:org.chromium.webview_shell/.WebViewLayoutTestRunner (target=org.chromium.webview_shell)\n";
 
-    const result = await adb.instrumentationRunnerForBundleId(instrumentationRunnersShellOutput, expectedPackage);
+    jest.spyOn(adb, 'shell').mockImplementation(async () => instrumentationRunnersShellOutput);
 
+    const result = await adb.getInstrumentationRunner('aDeviceId', expectedPackage);
+
+    expect(adb.shell).toBeCalledWith('aDeviceId', 'pm list instrumentation');
     expect(result).toEqual(expectedRunner);
   });
 });

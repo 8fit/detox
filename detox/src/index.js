@@ -5,14 +5,13 @@ const platform = require('./platform');
 const exportWrapper = require('./exportWrapper');
 const argparse = require('./utils/argparse');
 const log = require('./utils/logger').child({ __filename });
-const logError = require('./utils/logError');
-const onTerminate = require('./utils/onTerminate');
 const configuration = require('./configuration');
 
 let detox;
 
 function getDeviceConfig(configurations) {
   const configurationName = argparse.getArgValue('configuration');
+  const deviceOverride = argparse.getArgValue('device-name');
 
   const deviceConfig = (!configurationName && _.size(configurations) === 1)
     ? _.values(configurations)[0]
@@ -22,6 +21,11 @@ function getDeviceConfig(configurations) {
     throw new Error(`Cannot determine which configuration to use. use --configuration to choose one of the following:
                       ${Object.keys(configurations)}`);
   }
+
+  if (deviceOverride) {
+    deviceConfig.name = deviceOverride;
+  }
+
   if (!deviceConfig.type) {
     configuration.throwOnEmptyType();
   }
@@ -54,7 +58,7 @@ async function init(config, params) {
   try {
     await initializeDetox(config, params);
   } catch (err) {
-    logError(log, err);
+    log.error({ event: 'DETOX_INIT_ERROR' }, '\n', err);
     await cleanup();
 
     detox = null;
@@ -79,9 +83,6 @@ async function cleanup() {
         await detox.cleanup();
     }
 }
-
-/* istanbul ignore next */
-onTerminate(() => detox && detox.terminate());
 
 module.exports = Object.assign({
   init,

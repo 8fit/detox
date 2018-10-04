@@ -1,5 +1,10 @@
+const sanitize = require("sanitize-filename");
 const DetoxRuntimeError = require('../errors/DetoxRuntimeError');
 const MAX_FILE_LENGTH = 255;
+
+const sanitizeOptions = {
+  replacement: '_',
+};
 
 /*
   Escape filename and trim it to match filesystem limits (usually, not longer than 255 chars)
@@ -7,7 +12,7 @@ const MAX_FILE_LENGTH = 255;
 function constructSafeFilename(prefix = '', trimmable = '', suffix = '') {
   if (!trimmable) {
     throw new DetoxRuntimeError({
-      message: 'no filename was given to constructSafeFilename()',
+      message: 'no trimmable filename was given to constructSafeFilename(prefix, trimmable, suffix)',
       debugInfo: 'the arguments were: ' + JSON.stringify({
         prefix,
         trimmable,
@@ -35,7 +40,7 @@ function constructSafeFilename(prefix = '', trimmable = '', suffix = '') {
 
   const trimmed = trimmable.slice(-MAX_FILE_LENGTH + nonTrimmableLength);
   const unsafe = prefix + trimmed + suffix;
-  const sanitized = unsafe.replace(/[\\\/]/g, '_');
+  const sanitized = sanitize(unsafe, sanitizeOptions);
 
   return sanitized;
 }
