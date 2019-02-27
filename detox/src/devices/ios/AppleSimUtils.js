@@ -1,5 +1,6 @@
 const _ = require('lodash');
 const exec = require('../../utils/exec');
+const log = require('../../utils/logger').child({ __filename });
 const environment = require('../../utils/environment');
 
 class AppleSimUtils {
@@ -253,14 +254,17 @@ class AppleSimUtils {
   async _launchMagically(frameworkPath, logsInfo, udid, bundleId, args, languageAndLocale) {
     const statusLogs = {
       trying: `Launching ${bundleId}...`,
-      successful: `${bundleId} launched. The stdout and stderr logs were recreated, you can watch them with:\n` +
-      `        tail -F ${logsInfo.absJoined}`
     };
 
+    let dylibs = `${frameworkPath}/Detox`;
+    if (process.env.SIMCTL_CHILD_DYLD_INSERT_LIBRARIES) {
+      dylibs = `${process.env.SIMCTL_CHILD_DYLD_INSERT_LIBRARIES}:${dylibs}`;
+    }
+
     let launchBin = `/bin/cat /dev/null >${logsInfo.absStdout} 2>${logsInfo.absStderr} && ` +
-      `SIMCTL_CHILD_DYLD_INSERT_LIBRARIES="${frameworkPath}/Detox" ` +
+      `SIMCTL_CHILD_DYLD_INSERT_LIBRARIES="${dylibs}" ` +
       `/usr/bin/xcrun simctl launch --stdout=${logsInfo.simStdout} --stderr=${logsInfo.simStderr} ` +
-      `${udid} ${bundleId} --args ${args}`;;
+      `${udid} ${bundleId} --args ${args}`;
 
       if (!!languageAndLocale && !!languageAndLocale.language) {
         launchBin += ` -AppleLanguages "(${languageAndLocale.language})"`;
@@ -270,7 +274,12 @@ class AppleSimUtils {
         launchBin += ` -AppleLocale ${languageAndLocale.locale}`;
       }
 
-    return await exec.execWithRetriesAndLogs(launchBin, undefined, statusLogs, 1);
+    const result = await exec.execWithRetriesAndLogs(launchBin, undefined, statusLogs, 1);
+    
+    log.info(`${bundleId} launched. The stdout and stderr logs were recreated, you can watch them with:\n` +
+             `        tail -F ${logsInfo.absJoined}`);
+
+    return result;
   }
 
   _parseLaunchId(result) {
