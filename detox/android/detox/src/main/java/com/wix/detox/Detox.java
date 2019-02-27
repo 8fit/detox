@@ -15,6 +15,7 @@ import android.support.test.uiautomator.UiDevice;
 import android.support.test.uiautomator.UiObject;
 import android.support.test.uiautomator.UiObjectNotFoundException;
 import android.support.test.uiautomator.UiSelector;
+import android.os.Bundle;
 
 /**
  * <p>Static class.</p>
@@ -199,7 +200,7 @@ public final class Detox {
         } else {
           intent = new Intent();
         }
-        intent.putExtras(args);
+        intent.putExtras(arguments);
         return intent;
     }
 
