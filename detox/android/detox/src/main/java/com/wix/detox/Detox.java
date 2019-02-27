@@ -191,11 +191,16 @@ public final class Detox {
     }
 
     private static Intent extractInitialIntent() {
-        String detoxURLOverride = InstrumentationRegistry.getArguments().getString(DETOX_URL_OVERRIDE_ARG);
+        Intent intent;
+        Bundle arguments = InstrumentationRegistry.getArguments();
+        String detoxURLOverride = arguments.getString(DETOX_URL_OVERRIDE_ARG);
         if (detoxURLOverride != null) {
-            return intentWithUrl(detoxURLOverride);
+            intent = intentWithUrl(detoxURLOverride);
+        } else {
+          intent = new Intent();
         }
-        return null;
+        intent.putExtras(args);
+        return intent;
     }
 
     private static Intent intentWithUrl(String url) {
